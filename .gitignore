@@ -1,0 +1,12 @@
+# Files git should never upload. A line starting with # is a comment.
+
+# Compiler output from `cargo build`. Recreated locally. Hundreds of megabytes.
+/target
+
+# Editor backup files.
+**/*.rs.bk
+*.swp
+
+# Half-written save while stations.json is being replaced. The real station
+# list lives in ~/.config/radio-tui/, outside this folder, and is personal.
+stations.json.tmp

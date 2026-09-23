@@ -1,0 +1,35 @@
+# Cargo.toml is the project card. GitHub should have this file.
+# `cargo build` reads it to learn the name, the Rust edition, and which libraries to download.
+
+[package]
+name = "radio-tui"
+version = "0.1.1"
+edition = "2021"
+description = "A terminal internet radio player"
+license = "MIT"
+
+# Settings used only by `cargo build --release`. They make a smaller binary.
+# opt-level "z" prefers size. lto and codegen-units = 1 let the compiler
+# see the whole program at once. panic = "abort" drops unwind tables.
+# strip drops symbol names so the file you copy around stays small.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Libraries this program uses. Cargo downloads them; they are not copied into the repo.
+# The exact versions that were tested live in Cargo.lock, which should be uploaded
+# for an application so someone else builds the same thing.
+[dependencies]
+anyhow = "1.0"                                              # error messages with context
+crossterm = "0.29"                                          # keyboard and terminal control
+dirs = "6.0"                                                # finds ~/.config
+ratatui = "0.30"                                            # draws the text UI
+serde = { version = "1.0", features = ["derive"] }          # turns stations into JSON
+serde_json = "1.0"
+# HTTP client for importing a remote station list.
+# The "tls" feature is rustls. The default native-tls feature pulled in OpenSSL
+# and made the binary much larger.
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
