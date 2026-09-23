@@ -91,3 +91,5 @@ Remote lists use the same shape as the local config:
   ]
 }
 ```
+
+Try out the sample station list [mpv](https://raw.githubusercontent.com/DEMedus/radio-tui/sample-stations.json).
