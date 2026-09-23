@@ -31,7 +31,7 @@ Upload the source so someone else can build it. Leave the compiled program and y
 | `~/radio-tui` | no | the finished binary; attach it to a Release if you want downloads |
 | `~/.config/radio-tui/stations.json` | no | your stations and volume |
 
-Git is the history on your computer. GitHub is a copy of that history on the web. A commit is a snapshot. A push uploads commits. A clone downloads someone else's repo.
+
 
 ## Build from source
 
