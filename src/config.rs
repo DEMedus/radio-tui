@@ -75,16 +75,6 @@ pub fn default_stations() -> Vec<Station> {
             url: "http://ice1.somafm.com/groovesalad-256-mp3".to_string(),
             favorite: false,
         },
-        Station {
-            name: "NPO Radio 1".to_string(),
-            url: "https://icecast.omroep.nl/radio1-bb-mp3".to_string(),
-            favorite: false,
-        },
-        Station {
-            name: "Bowl After Bowl".to_string(),
-            url: "https://stream.bowlafterbowl.com/listen/bowlafterbowl/stream.mp3".to_string(),
-            favorite: false,
-        },
     ]
 }
 
