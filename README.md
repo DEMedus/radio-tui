@@ -15,24 +15,6 @@ It plays audio with [mpv](https://mpv.io/). If mpv is missing, radio-tui will sa
 
 This Linux binary will not run on Windows or macOS.
 
-## What goes on GitHub
-
-Upload the source so someone else can build it. Leave the compiled program and your personal station list on this machine.
-
-| Path | Upload? | Why |
-|---|---|---|
-| `src/` | yes | the program |
-| `Cargo.toml` | yes | name, dependencies, release settings |
-| `Cargo.lock` | yes | exact library versions that were tested |
-| `README.md` | yes | how to build and use it |
-| `LICENSE` | yes | the MIT terms named in `Cargo.toml` |
-| `.gitignore` | yes | tells git to skip build output |
-| `target/` | no | compiler output; `cargo build` recreates it |
-| `~/radio-tui` | no | the finished binary; attach it to a Release if you want downloads |
-| `~/.config/radio-tui/stations.json` | no | your stations and volume |
-
-
-
 ## Build from source
 
 Needs Rust (via [rustup](https://rustup.rs/)):
