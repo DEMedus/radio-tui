@@ -58,11 +58,14 @@ cp target/release/radio-tui ~/radio-tui
 | `d` | Delete selected station (in edit mode) |
 | `J` / `K` | Move station down / up (in edit mode) |
 | `?` | Help |
+| `m` | Media skip target: all stations, or favorites only |
 | `f` | Now-playing screen (also opens after 1 minute idle while playing) |
 | `q` / Esc | Quit or leave overlay |
 | Ctrl+C | Quit |
 
-After a minute of the same station with no keys, the list is replaced by a now-playing view: station name, ICY track title when the stream sends one, and a full-screen mirrored EQ. Press `f` while playing to open it immediately. Any key returns to the list.
+After a minute of the same station with no keys, the list is replaced by a now-playing view: station name, ICY track title when the stream sends one, and a full-screen mirrored EQ. Press `f` while playing to open it immediately. Play, skip, and `m` stay on that screen. Any other key returns to the list.
+
+Play, previous, and next on a media keyboard control radio-tui while it is running. Those buttons go to the desktop media player, and radio-tui registers as one. Press `m` to make previous and next walk only favorited stations, or every station. The volume dial stays the system volume.
 
 URLs can be pasted into the add prompt. In the URL prompt, Left and Right move the cursor, Backspace deletes the character before it, and Delete removes the character under it.
 

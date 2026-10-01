@@ -33,3 +33,6 @@ serde_json = "1.0"
 # The "tls" feature is rustls. The default native-tls feature pulled in OpenSSL
 # and made the binary much larger.
 ureq = { version = "2.12", default-features = false, features = ["tls"] }
+# Registers with the desktop so play and skip buttons, which Omarchy
+# never delivers to the terminal, reach this program.
+souvlaki = "0.8"

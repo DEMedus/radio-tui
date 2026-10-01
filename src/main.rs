@@ -13,6 +13,7 @@ use ratatui::Terminal;
 mod app;
 mod config;
 mod deps;
+mod media;
 mod ui;
 mod visualizer;
 
@@ -41,9 +42,17 @@ fn main() -> Result<()> {
 
     let (mut terminal, _guard) = TerminalGuard::setup().context("failed to set up terminal")?;
     let mut app = App::new();
+    let mut media_keys = media::MediaKeys::start();
 
     loop {
         app.tick();
+        if let Some(keys) = media_keys.as_mut() {
+            for action in keys.poll() {
+                app.handle_media(action);
+            }
+            let (title, artist) = app.media_label();
+            keys.sync(&title, &artist, app.is_playing());
+        }
         terminal
             .draw(|frame| ui::ui(frame, &mut app))
             .context("failed to draw")?;
