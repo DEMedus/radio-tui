@@ -17,11 +17,23 @@ pub struct Station {
     pub favorite: bool,
 }
 
+/// Which stations the media skip buttons walk through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum MediaSkip {
+    #[default]
+    All,
+    Favorites,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     pub stations: Vec<Station>,
     #[serde(default = "default_volume")]
     pub volume: f32,
+    /// Missing in older files. Defaults to every station.
+    #[serde(default)]
+    pub media_skip: MediaSkip,
 }
 
 #[derive(Debug)]
@@ -82,6 +94,7 @@ pub fn default_config() -> Config {
     Config {
         stations: default_stations(),
         volume: default_volume(),
+        media_skip: MediaSkip::All,
     }
 }
 
@@ -171,6 +184,8 @@ struct RawConfig {
     stations: Vec<RawStation>,
     #[serde(default = "default_volume")]
     volume: f32,
+    #[serde(default)]
+    media_skip: MediaSkip,
 }
 
 #[derive(Debug, Deserialize)]
@@ -216,6 +231,7 @@ pub fn parse_config(json: &str) -> Result<Config, LoadError> {
     Ok(Config {
         stations: raw.stations.into_iter().map(Station::from).collect(),
         volume: clamp_volume(raw.volume),
+        media_skip: raw.media_skip,
     })
 }
 

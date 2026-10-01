@@ -7,13 +7,14 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MediaKeyCode};
 use ratatui::widgets::ListState;
 
 use crate::config::{
     clamp_volume, default_config, fetch_remote_stations, load_config, save_config,
-    selected_new_stations, valid_list_url, valid_stream_url, Config, LoadError, Station,
+    selected_new_stations, valid_list_url, valid_stream_url, Config, LoadError, MediaSkip, Station,
 };
+use crate::media::MediaAction;
 use crate::visualizer::Visualizer;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,6 +58,7 @@ pub struct App {
     pub stations: Vec<Station>,
     pub selected: usize,
     pub volume: f32,
+    pub media_skip: MediaSkip,
     pub status: String,
     pub mode: Mode,
     pub list_state: ListState,
@@ -98,6 +100,7 @@ impl App {
             }],
             selected: 0,
             volume: 70.0,
+            media_skip: MediaSkip::All,
             status: "Ready".to_string(),
             mode: Mode::Normal,
             list_state: ListState::default(),
@@ -119,20 +122,27 @@ impl App {
     }
 
     pub fn new() -> Self {
-        let (stations, volume, status, should_save) = match load_config() {
+        let (stations, volume, media_skip, status, should_save) = match load_config() {
             Ok(config) => {
                 let status = if config.stations.is_empty() {
                     "No stations saved. Press a to add one.".to_string()
                 } else {
                     "Ready".to_string()
                 };
-                (config.stations, config.volume, status, false)
+                (
+                    config.stations,
+                    config.volume,
+                    config.media_skip,
+                    status,
+                    false,
+                )
             }
             Err(LoadError::NotFound) => {
                 let config = default_config();
                 (
                     config.stations,
                     config.volume,
+                    config.media_skip,
                     "Created default station list".to_string(),
                     true,
                 )
@@ -142,6 +152,7 @@ impl App {
                 (
                     config.stations,
                     config.volume,
+                    config.media_skip,
                     format!("{err} — using defaults, original file left untouched"),
                     false,
                 )
@@ -151,6 +162,7 @@ impl App {
         let mut app = Self {
             selected: 0,
             volume: clamp_volume(volume),
+            media_skip,
             status,
             mode: Mode::Normal,
             list_state: ListState::default(),
@@ -191,6 +203,7 @@ impl App {
         let config = Config {
             stations: self.stations.clone(),
             volume: self.volume,
+            media_skip: self.media_skip,
         };
         if let Err(err) = save_config(&config) {
             self.status = format!("Failed to save config: {err}");
@@ -369,6 +382,36 @@ impl App {
         self.persist();
     }
 
+    pub fn media_label(&self) -> (String, String) {
+        let index = self.playing_index().unwrap_or(self.selected);
+        let title = self
+            .stations
+            .get(index)
+            .map(|station| station.name.clone())
+            .unwrap_or_else(|| "radio-tui".to_string());
+        let artist = self.track_title.clone().unwrap_or_default();
+        (title, artist)
+    }
+
+    pub fn handle_media(&mut self, action: MediaAction) {
+        match action {
+            MediaAction::Play => {
+                if !self.is_playing() {
+                    self.play_selected();
+                }
+            }
+            MediaAction::Stop => {
+                if self.is_playing() {
+                    self.stop();
+                    self.status = "Stopped".to_string();
+                }
+            }
+            MediaAction::Toggle => self.toggle_playback(),
+            MediaAction::Next => self.media_step(1),
+            MediaAction::Previous => self.media_step(-1),
+        }
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return true;
@@ -529,6 +572,9 @@ impl App {
     }
 
     fn handle_normal_key(&mut self, key: KeyEvent) -> bool {
+        if self.media_key(key) {
+            return false;
+        }
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => return true,
             KeyCode::Down | KeyCode::Char('j') => {
@@ -568,13 +614,19 @@ impl App {
         false
     }
 
-    fn handle_now_playing_key(&mut self, _key: KeyEvent) -> bool {
+    fn handle_now_playing_key(&mut self, key: KeyEvent) -> bool {
+        if self.media_key(key) {
+            return false;
+        }
         self.mode = Mode::Normal;
         self.status = "Ready".to_string();
         false
     }
 
     fn handle_edit_key(&mut self, key: KeyEvent) {
+        if self.media_key(key) {
+            return;
+        }
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.mode = Mode::Normal;
@@ -903,6 +955,79 @@ impl App {
         }
     }
 
+    fn media_key(&mut self, key: KeyEvent) -> bool {
+        let action =
+            match key.code {
+                KeyCode::Char('m') => {
+                    self.toggle_media_skip();
+                    return true;
+                }
+                KeyCode::Media(MediaKeyCode::Play) | KeyCode::Media(MediaKeyCode::PlayPause) => {
+                    MediaAction::Toggle
+                }
+                KeyCode::Media(MediaKeyCode::Pause) | KeyCode::Media(MediaKeyCode::Stop) => {
+                    MediaAction::Stop
+                }
+                KeyCode::Media(MediaKeyCode::TrackNext)
+                | KeyCode::Media(MediaKeyCode::FastForward) => MediaAction::Next,
+                KeyCode::Media(MediaKeyCode::TrackPrevious)
+                | KeyCode::Media(MediaKeyCode::Rewind) => MediaAction::Previous,
+                _ => return false,
+            };
+        self.handle_media(action);
+        true
+    }
+
+    fn toggle_media_skip(&mut self) {
+        self.media_skip = match self.media_skip {
+            MediaSkip::All => MediaSkip::Favorites,
+            MediaSkip::Favorites => MediaSkip::All,
+        };
+        self.status = match self.media_skip {
+            MediaSkip::All => "Media skip: all stations".to_string(),
+            MediaSkip::Favorites => "Media skip: favorites".to_string(),
+        };
+        self.persist();
+    }
+
+    fn media_step(&mut self, delta: isize) {
+        let indexes: Vec<usize> = match self.media_skip {
+            MediaSkip::All => (0..self.stations.len()).collect(),
+            MediaSkip::Favorites => self
+                .stations
+                .iter()
+                .enumerate()
+                .filter(|(_, station)| station.favorite)
+                .map(|(index, _)| index)
+                .collect(),
+        };
+        if indexes.is_empty() {
+            self.status = "No favorites. Press m to skip every station.".to_string();
+            return;
+        }
+        let next = match indexes.iter().position(|index| *index == self.selected) {
+            Some(place) => {
+                let len = indexes.len() as isize;
+                let moved = (place as isize + delta).rem_euclid(len) as usize;
+                indexes[moved]
+            }
+            None => {
+                if delta < 0 {
+                    *indexes.last().expect("indexes is not empty")
+                } else {
+                    indexes[0]
+                }
+            }
+        };
+        self.selected = next;
+        self.sync_list_state();
+        if self.is_playing() {
+            self.play_selected();
+        } else if let Some(station) = self.stations.get(next) {
+            self.status = format!("Selected {}", station.name);
+        }
+    }
+
     fn toggle_favorite(&mut self) {
         let Some(index) = self.list_state.selected() else {
             self.status = "No station selected".to_string();
@@ -987,6 +1112,7 @@ impl App {
                 "--really-quiet",
                 "--no-input-terminal",
                 "--idle=no",
+                "--load-scripts=no",
                 "--af=@vu:astats=metadata=1:reset=1:measure_overall=RMS_level+Peak_level:measure_perchannel=RMS_level+Peak_level+Crest_factor+Zero_crossings_rate",
                 &format!("--volume={volume}"),
                 &format!("--input-ipc-server={}", ipc.display()),
@@ -1132,6 +1258,7 @@ mod tests {
         let mut app = App {
             selected: 0,
             volume: 80.0,
+            media_skip: MediaSkip::All,
             status: String::new(),
             mode: Mode::Normal,
             list_state: ListState::default(),
@@ -1159,6 +1286,40 @@ mod tests {
             url: url.to_string(),
             favorite: false,
         }
+    }
+
+    #[test]
+    fn media_skip_walks_favorites_or_every_station() {
+        let mut app = test_app(vec![
+            station("a", "https://a.example/x"),
+            station("b", "https://b.example/x"),
+            station("c", "https://c.example/x"),
+        ]);
+        app.stations[0].favorite = true;
+        app.stations[2].favorite = true;
+        app.media_skip = MediaSkip::Favorites;
+        app.media_step(1);
+        assert_eq!(app.selected, 2);
+        app.media_step(1);
+        assert_eq!(app.selected, 0);
+
+        app.selected = 1;
+        app.media_step(-1);
+        assert_eq!(app.selected, 2);
+
+        app.media_skip = MediaSkip::All;
+        app.selected = 2;
+        app.media_step(1);
+        assert_eq!(app.selected, 0);
+    }
+
+    #[test]
+    fn media_skip_with_no_favorites_stays_put() {
+        let mut app = test_app(vec![station("a", "https://a.example/x")]);
+        app.media_skip = MediaSkip::Favorites;
+        app.media_step(1);
+        assert_eq!(app.selected, 0);
+        assert!(app.status.contains("No favorites"));
     }
 
     #[test]

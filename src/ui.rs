@@ -4,6 +4,7 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Wrap};
 
 use crate::app::{App, Mode};
+use crate::config::MediaSkip;
 use crate::visualizer::BAR_COUNT;
 
 pub fn ui(frame: &mut Frame, app: &mut App) {
@@ -172,10 +173,15 @@ fn eq_lines(levels: &[f32]) -> (Line<'static>, Line<'static>) {
 }
 
 const KEY_LEGEND: &str =
-    "j/k move • Enter play • Space stop • +/- vol • * fav • a add • e edit • f now • ? help • q quit";
+    "j/k move • Enter play • Space stop • +/- vol • * fav • a add • e edit • m skip • f now • ? help • q quit";
 
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
-    let status = format!("Volume {:.0}", app.volume) + "%  •  " + app.status.as_str();
+    let skip = match app.media_skip {
+        MediaSkip::All => "all",
+        MediaSkip::Favorites => "favorites",
+    };
+    let status =
+        format!("Volume {:.0}", app.volume) + "%  •  skip " + skip + "  •  " + app.status.as_str();
     draw_mode_footer(frame, area, &status, KEY_LEGEND);
 }
 
@@ -468,13 +474,18 @@ fn draw_help(frame: &mut Frame) {
          J / K                Move station down / up (edit mode)\n\
          ?                    Toggle this help\n\
          f                    Now-playing screen (also after 1 min idle)\n\
+         m                    Media skip: all stations, or favorites only\n\
          q                    Quit\n\
          Esc                  Leave overlay / quit from the list\n\
          Ctrl+C               Quit immediately\n\n\
          After a minute of playback with no keys, the list hides and a\n\
          now-playing screen shows the station, track (if the stream sends\n\
          ICY metadata), and a full-screen EQ. Press f to open it anytime\n\
-         while playing. Any key returns to the list.\n\n\
+         while playing. Play, skip, and m keep that screen up. Any other\n\
+         key returns to the list.\n\n\
+         A media keyboard's play and skip buttons control playback while\n\
+         radio-tui is open. Skip walks every station, or only favorites\n\
+         after m. The volume dial is the system volume.\n\n\
          Streams are played with mpv. Config is saved to\n\
          ~/.config/radio-tui/stations.json\n\n\
          Press any key to return.",
@@ -586,7 +597,7 @@ mod tests {
 
     #[test]
     fn wide_screen_fits_the_legend_on_one_line() {
-        let screen = render(120, 24);
+        let screen = render(140, 24);
         assert!(screen.contains(KEY_LEGEND), "{screen}");
     }
 }
