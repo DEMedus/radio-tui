@@ -25,7 +25,8 @@ strip = true
 [dependencies]
 anyhow = "1.0"                                              # error messages with context
 crossterm = "0.29"                                          # keyboard and terminal control
-dirs = "6.0"                                                # finds ~/.config
+dirs = "6.0"
+libc = "0.2"                                                # finds ~/.config
 ratatui = "0.30"                                            # draws the text UI
 serde = { version = "1.0", features = ["derive"] }          # turns stations into JSON
 serde_json = "1.0"

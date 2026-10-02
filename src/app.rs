@@ -76,6 +76,17 @@ pub struct App {
     pub import: Option<ImportPick>,
 }
 
+fn format_on_air(secs: u64) -> String {
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+    if hours > 0 {
+        format!("on air {hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("on air {minutes}:{seconds:02}")
+    }
+}
+
 fn byte_index(text: &str, cursor: usize) -> usize {
     text.char_indices()
         .nth(cursor)
@@ -287,6 +298,17 @@ impl App {
             .and_then(|i| self.stations.get(i))
             .map(|s| s.name.as_str())
             .unwrap_or("radio-tui")
+    }
+
+    pub fn playing_is_favorite(&self) -> bool {
+        self.playing_index()
+            .and_then(|index| self.stations.get(index))
+            .is_some_and(|station| station.favorite)
+    }
+
+    pub fn on_air(&self) -> Option<String> {
+        self.playing_since
+            .map(|started| format_on_air(started.elapsed().as_secs()))
     }
 
     pub fn eq_energy(&self) -> f32 {
@@ -1286,6 +1308,12 @@ mod tests {
             url: url.to_string(),
             favorite: false,
         }
+    }
+
+    #[test]
+    fn on_air_clock_uses_hours_only_after_one_hour() {
+        assert_eq!(format_on_air(74), "on air 1:14");
+        assert_eq!(format_on_air(3661), "on air 1:01:01");
     }
 
     #[test]

@@ -45,7 +45,7 @@ cp target/release/radio-tui ~/radio-tui
 | `q` / Esc | Quit or leave overlay |
 | Ctrl+C | Quit |
 
-After a minute of the same station with no keys, the list is replaced by a now-playing view: station name, ICY track title when the stream sends one, and a full-screen mirrored EQ. Press `f` while playing to open it immediately. Play, skip, and `m` stay on that screen. Any other key returns to the list.
+After a minute of the same station with no keys, the list is replaced by a now-playing view: station name (with a star when it is a favorite), the time, how long it has been on air, the ICY track title when the stream sends one, and a full-screen mirrored EQ. Press `f` while playing to open it immediately. Play, skip, and `m` stay on that screen. Any other key returns to the list.
 
 Play, previous, and next on a media keyboard control radio-tui while it is running. Those buttons go to the desktop media player, and radio-tui registers as one. Press `m` to make previous and next walk only favorited stations, or every station. The volume dial stays the system volume.
 

@@ -224,7 +224,19 @@ fn draw_now_playing(frame: &mut Frame, app: &App) {
         ])
         .split(inner);
 
-    let station = center_text(app.playing_station_name(), chunks[1].width as usize);
+    frame.render_widget(
+        Paragraph::new(local_clock())
+            .alignment(Alignment::Right)
+            .style(Style::default().fg(Color::DarkGray)),
+        chunks[0],
+    );
+
+    let station_name = if app.playing_is_favorite() {
+        format!("★ {}", app.playing_station_name())
+    } else {
+        app.playing_station_name().to_string()
+    };
+    let station = center_text(&station_name, chunks[1].width as usize);
     frame.render_widget(
         Paragraph::new(station).style(
             Style::default()
@@ -253,9 +265,20 @@ fn draw_now_playing(frame: &mut Frame, app: &App) {
         chunks[3],
     );
 
+    if let Some(on_air) = app.on_air() {
+        frame.render_widget(
+            Paragraph::new(center_text(&on_air, chunks[4].width as usize))
+                .style(Style::default().fg(Color::DarkGray)),
+            chunks[4],
+        );
+    }
+
     draw_mirror_eq(frame, chunks[5], app.eq_bars(), energy);
 
-    let hint = format!("volume {:.0}%   any key returns to the list", app.volume);
+    let hint = format!(
+        "volume {:.0}%    any other key returns to the list",
+        app.volume
+    );
     frame.render_widget(
         Paragraph::new(hint)
             .style(Style::default().fg(Color::DarkGray))
@@ -294,7 +317,8 @@ fn draw_mirror_eq(frame: &mut Frame, area: Rect, bars: &[f32], energy: f32) {
             } else {
                 (height - mid).max(1)
             };
-            let filled = (level.clamp(0.0, 1.0) * max_dist as f32).round() as usize;
+            let shown = if upper { level } else { level * 0.55 };
+            let filled = (shown.clamp(0.0, 1.0) * max_dist as f32).round() as usize;
             let on_horizon = dist == 0;
             let glyph = if on_horizon {
                 if energy > 0.08 {
@@ -303,8 +327,12 @@ fn draw_mirror_eq(frame: &mut Frame, area: Rect, bars: &[f32], energy: f32) {
                     '·'
                 }
             } else if dist <= filled {
-                '█'
-            } else if dist == filled + 1 && level > 0.08 {
+                if upper {
+                    '█'
+                } else {
+                    '▒'
+                }
+            } else if dist == filled + 1 && shown > 0.08 {
                 if upper {
                     '▄'
                 } else {
@@ -330,6 +358,18 @@ fn draw_mirror_eq(frame: &mut Frame, area: Rect, bars: &[f32], energy: f32) {
         lines.push(Line::from(spans));
     }
     frame.render_widget(Paragraph::new(lines), area);
+}
+
+fn local_clock() -> String {
+    let stamp = unsafe { libc::time(std::ptr::null_mut()) };
+    if stamp < 0 {
+        return "--:--".to_string();
+    }
+    let mut broken = unsafe { std::mem::zeroed() };
+    if unsafe { libc::localtime_r(&stamp, &mut broken) }.is_null() {
+        return "--:--".to_string();
+    }
+    format!("{:02}:{:02}", broken.tm_hour, broken.tm_min)
 }
 
 fn center_text(text: &str, width: usize) -> String {
@@ -479,8 +519,9 @@ fn draw_help(frame: &mut Frame) {
          Esc                  Leave overlay / quit from the list\n\
          Ctrl+C               Quit immediately\n\n\
          After a minute of playback with no keys, the list hides and a\n\
-         now-playing screen shows the station, track (if the stream sends\n\
-         ICY metadata), and a full-screen EQ. Press f to open it anytime\n\
+         now-playing screen shows the station, a clock, how long it has\n\
+         been on air, the track (if the stream sends ICY metadata), and a\n\
+         full-screen EQ. A favorite keeps its star. Press f to open it anytime\n\
          while playing. Play, skip, and m keep that screen up. Any other\n\
          key returns to the list.\n\n\
          A media keyboard's play and skip buttons control playback while\n\
